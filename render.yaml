@@ -1,0 +1,19 @@
+# Personal, non-commercial bot using Render Free and VirusTotal Public API.
+# Upload all extracted files to the GitHub repository root.
+services:
+  - type: web
+    name: telegram-virus-checker-free
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -c gunicorn.conf.py app:app
+    healthCheckPath: /health
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: VIRUSTOTAL_API_KEY
+        sync: false
+      - key: ALLOWED_USER_IDS
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true
