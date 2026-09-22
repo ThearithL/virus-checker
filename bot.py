@@ -427,3 +427,15 @@ class Checker:
                 raise UserError('Analysis status is unknown. Try the hash later.')
         else:
             raise UserError('This button has already been used. Use Check result or send the file again for a hash lookup.')
+
+
+if __name__ == '__main__':
+    # Existing Render services may still use `python bot.py` as their start command.
+    # Replace this process with Gunicorn so it receives Render's shutdown signals.
+    import sys
+
+    root = Path(__file__).resolve().parent
+    os.execv(sys.executable, [
+        sys.executable, '-m', 'gunicorn', '--chdir', str(root),
+        '-c', str(root / 'gunicorn.conf.py'), 'app:app',
+    ])

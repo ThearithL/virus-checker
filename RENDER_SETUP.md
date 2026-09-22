@@ -41,6 +41,10 @@ Open the failed service, then **Settings → Build & Deploy**. Use these values:
 | Health Check Path | `/health` |
 | Instance Type | **Free** |
 
+An existing Start Command of `python bot.py` is also supported: it launches
+Gunicorn with the same configuration. If the logs show `Application exited
+early` after that command, deploy the latest commit containing this startup fix.
+
 The `.python-version` file selects Python 3.12 with the current available patch.
 If an old `PYTHON_VERSION` environment variable overrides it, remove that
 override, or set a fully qualified supported Python 3.12 patch version.
@@ -106,6 +110,7 @@ service. Use the new service's logs and keep only one active service per token.
 | Symptom | Check |
 | --- | --- |
 | `requirements.txt` not found | The file must be committed to the deployed branch, in the configured Root Directory. Extract and upload the files. |
+| `Application exited early` after `python bot.py` | Deploy the latest commit, which starts Gunicorn from `bot.py`, or set Start Command to `gunicorn -c gunicorn.conf.py app:app`. |
 | `No module named app` | `app.py` and `gunicorn.conf.py` must be beside `requirements.txt`; verify Root Directory. |
 | Missing environment-variable error | Add the exact keys above; placeholder values will not work. |
 | Webhook registration failed | Check the bot token, Render public HTTPS URL, and network access. Redeploy after fixing. |
