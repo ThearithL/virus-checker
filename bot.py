@@ -21,6 +21,36 @@ PENDING_TTL = 15 * 60
 LOG = logging.getLogger('virus_checker')
 SHA256 = re.compile(r'[a-fA-F0-9]{64}')
 
+BUTTON_COMMANDS = {
+    '📂 ពិនិត្យឯកសារ / Scan': '/scan',
+    '🔎 ពិនិត្យ Hash / Hash': '/hash',
+    '🆔 លេខ ID / My ID': '/id',
+    '📊 ស្ថានភាព / Status': '/status',
+    '❓ ជំនួយ / Help': '/help',
+    '🔒 ឯកជនភាព / Privacy': '/privacy',
+}
+_BUTTONS = list(BUTTON_COMMANDS)
+MAIN_KEYBOARD = {
+    'keyboard': [[{'text': label} for label in _BUTTONS[i:i + 2]]
+                 for i in range(0, len(_BUTTONS), 2)],
+    'resize_keyboard': True,
+    'is_persistent': True,
+    'one_time_keyboard': False,
+}
+COMMANDS = [
+    {'command': command, 'description': description}
+    for command, description in (
+        ('start', 'ចាប់ផ្ដើម / Start'),
+        ('menu', 'បង្ហាញប៊ូតុង / Show buttons'),
+        ('scan', 'របៀបផ្ញើឯកសារ / Send a file'),
+        ('hash', 'ពិនិត្យ SHA256 / Look up a hash'),
+        ('id', 'លេខ Telegram ID / My ID'),
+        ('status', 'ស្ថានភាព / Bot status'),
+        ('help', 'ជំនួយ / Help'),
+        ('privacy', 'ឯកជនភាព / Privacy'),
+    )
+]
+
 PRIVACY = '''🔒 Privacy / ឯកជនភាព
 ឯកសារឆ្លងកាត់ Telegram និង Render។ ដំបូង bot ផ្ញើតែ SHA-256 hash ទៅ VirusTotal ដើម្បីរករបាយការណ៍ចាស់។
 Files pass through Telegram and Render. Initially only the SHA-256 hash is sent to VirusTotal to look up an existing report.
@@ -34,6 +64,11 @@ HELP = '''🛡 Virus Checker — Render Free
 ផ្ញើ File / Document (អតិបរមា 20 MB) ដើម្បីពិនិត្យ។
 Send a File / Document (maximum 20 MB) for a hash lookup.
 If needed, you can consent to upload it to VirusTotal for analysis.
+
+ចុចប៊ូតុងខាងក្រោម ឬ Menu ដើម្បីជ្រើសរើស។
+Use the buttons below or the command Menu.
+/menu — Show buttons again
+/scan — How to send a file
 
 /id — Your Telegram user ID
 /hash SHA256 — Look up a hash without sending the file
@@ -102,6 +137,8 @@ class Telegram:
         fields = dict(chat_id=chat, text=text[:4000], link_preview_options={'is_disabled': True})
         if keyboard:
             fields['reply_markup'] = {'inline_keyboard': keyboard}
+        else:
+            fields['reply_markup'] = MAIN_KEYBOARD
         return self.call('sendMessage', **fields)
 
     def download(self, file_id, path):
@@ -243,12 +280,29 @@ class Checker:
                              allowed_updates=['message', 'callback_query'], drop_pending_updates=False)
                 self.registered = True
                 LOG.warning('Telegram webhook registered; ready for messages')
+                self.register_menu()
                 return
             except Exception as error:
                 LOG.warning('Webhook registration failed (%s), attempt %d/6', type(error).__name__, attempt + 1)
                 if attempt < 5:
                     time.sleep(10)
         LOG.error('Check Telegram token and public HTTPS URL, then redeploy')
+
+    def register_menu(self):
+        # Menu setup failures must not disable an already registered webhook.
+        for attempt in range(3):
+            try:
+                self.tg.call('setMyCommands', commands=COMMANDS,
+                             scope={'type': 'all_private_chats'})
+                self.tg.call('setChatMenuButton', menu_button={'type': 'commands'})
+                LOG.warning('Telegram menu and commands registered')
+                return
+            except Exception as error:
+                LOG.warning('Menu registration failed (%s), attempt %d/3',
+                            type(error).__name__, attempt + 1)
+                if attempt < 2:
+                    time.sleep(10)
+        LOG.warning('Command menu unavailable; reply buttons and typed commands still work')
 
     def submit(self, update):
         now = time.monotonic()
@@ -296,7 +350,12 @@ class Checker:
             if type(user) is not int or type(chat) is not int:
                 return
             text = message.get('text', '')
+            if not callback:
+                text = BUTTON_COMMANDS.get(text, text)
             command = text.split(' ', 1)[0].split('@', 1)[0]
+            if not callback and command in ('/start', '/help', '/menu'):
+                self.tg.say(chat, HELP)
+                return
             if not callback and command == '/id':
                 self.tg.say(chat, f'Your Telegram user ID: {user}\nSet ALLOWED_USER_IDS in Render Environment, then save and redeploy.')
                 return
@@ -313,8 +372,11 @@ class Checker:
                 except Exception:
                     pass  # An old button may outlive Telegram's short acknowledgement window.
                 self.handle_callback(chat, user, callback.get('data', ''))
-            elif command in ('/start', '/help'):
-                self.tg.say(chat, HELP)
+            elif command == '/scan':
+                self.tg.say(chat, '📂 ចុច 📎 → File / Document ហើយផ្ញើឯកសារ (អតិបរមា 20 MB)។\n'
+                            'Tap 📎 → File / Document and send a file (maximum 20 MB).\n'
+                            'ដំបូងពិនិត្យតែ hash។ Upload ទៅ VirusTotal ត្រូវការការយល់ព្រមរបស់អ្នក។\n'
+                            'First we look up its hash. Uploading to VirusTotal needs your approval.')
             elif command == '/status':
                 self.tg.say(chat, 'Bot running — VirusTotal API mode.\nSend /privacy for file-sharing details.\nPrivate use only; 20 MB file limit. Free API quotas apply.')
             elif command == '/hash':

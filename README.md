@@ -28,9 +28,17 @@ service; you must create/sync a Blueprint or edit the service settings yourself.
 
 ## Commands
 
+The bot registers its Telegram command Menu automatically on startup. After
+deploying, send `/start` or `/menu` to show the Khmer/English buttons: Scan,
+Hash, My ID, Status, Help, and Privacy. If hidden, use Telegram's keyboard icon
+or send `/menu` again. Scan explains how to attach a document; Hash explains
+the `/hash SHA256` command. Scanning still requires an allowed user ID.
+
 | Command / action | Behavior |
 | --- | --- |
 | `/start`, `/help` | Khmer + English help |
+| `/menu` | Show the main buttons |
+| `/scan` | Instructions for attaching a file |
 | `/id` | Your numeric Telegram user ID, even before authorization |
 | `/status` | Bot configuration summary; no API key is exposed |
 | `/privacy` | How Telegram, Render and VirusTotal handle your file |
