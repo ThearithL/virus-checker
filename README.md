@@ -52,6 +52,9 @@ The allowlist is required for scans. Empty `ALLOWED_USER_IDS` or `0` disables
 scanning for real users; `/id` and `/privacy` still work. Multiple IDs can be
 separated with commas. The bot ignores group chats.
 
+Scan reports, hash-not-found messages, and analysis progress are displayed in Khmer.
+SHA-256 hashes, VirusTotal links, numeric counts, and UTC timestamps are preserved.
+
 ## What the result means
 
 - **Existing report:** results from a previous VirusTotal analysis, with its date.

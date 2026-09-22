@@ -58,7 +58,7 @@ class CheckerTests(unittest.TestCase):
         self.create_consent()
         self.checker.vt.lookup.assert_called_once_with(self.digest)
         self.checker.vt.upload.assert_not_called()
-        self.assertIn('safety is unknown', self.output().lower())
+        self.assertIn('មិនអាចបញ្ជាក់សុវត្ថិភាពបានទេ', self.output().lower())
         self.assertIn('retained and shared', self.output())
         self.assertTrue(self.paths)
         self.assertTrue(all(not path.exists() for path in self.paths))
@@ -66,7 +66,7 @@ class CheckerTests(unittest.TestCase):
     def test_known_report_is_labelled_existing_and_still_needs_consent(self):
         self.checker.vt.lookup.return_value = {'attributes': {'last_analysis_stats': {'undetected': 3}}}
         self.create_consent()
-        self.assertIn('Existing report — not a new scan', self.output())
+        self.assertIn('របាយការណ៍ដែលមានស្រាប់ — មិនមែនការស្កេនថ្មីទេ', self.output())
         self.checker.vt.upload.assert_not_called()
 
     def test_empty_allowlist_and_group_chats_do_not_scan(self):
@@ -135,8 +135,8 @@ class CheckerTests(unittest.TestCase):
         self.checker.tg.say.reset_mock()
         self.checker.vt.analysis.return_value = {'attributes': {'status': 'queued', 'stats': {}}}
         self.checker.process(self.callback(key, action='check'))
-        self.assertIn('still analysing', self.output())
-        self.assertNotIn('No detections', self.output())
+        self.assertIn('កំពុងវិភាគនៅឡើយ', self.output())
+        self.assertNotIn('មិនបានរកឃើញការគំរាមកំហែង', self.output())
         self.assertIn(key, self.checker.pending)
 
     def test_completed_analysis_reports_detection(self):
@@ -145,7 +145,7 @@ class CheckerTests(unittest.TestCase):
         self.checker.vt.analysis.return_value = {'attributes': {
             'status': 'completed', 'stats': {'malicious': 2, 'undetected': 8}}}
         self.checker.process(self.callback(key, action='check'))
-        self.assertIn('Malicious: 2', self.output())
+        self.assertIn('រកឃើញការគំរាមកំហែង៖ 2', self.output())
         self.assertNotIn(key, self.checker.pending)
 
 
@@ -178,11 +178,11 @@ class NetworkBoundaryTests(unittest.TestCase):
 
     def test_no_engine_results_and_incomplete_coverage(self):
         text = bot.report_text({'last_analysis_stats': {}}, 'a' * 64)
-        self.assertIn('No usable engine results', text)
-        self.assertNotIn('No detections in returned', text)
+        self.assertIn('មិនមានលទ្ធផលគ្រប់គ្រាន់', text)
+        self.assertNotIn('មិនបានរកឃើញការគំរាមកំហែងក្នុងលទ្ធផលនេះ', text)
         text = bot.report_text({'last_analysis_stats': {'undetected': 2, 'failure': 1}}, 'a' * 64)
-        self.assertIn('Coverage is incomplete', text)
-        self.assertIn('does not guarantee safety', text)
+        self.assertIn('ការពិនិត្យមិនទាន់គ្រប់ជ្រុងជ្រោយទេ', text)
+        self.assertIn('មិនធានាថាឯកសារមានសុវត្ថិភាពទេ', text)
 
 
 class WebhookTests(unittest.TestCase):

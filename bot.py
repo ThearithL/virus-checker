@@ -220,31 +220,31 @@ class VirusTotal:
 def report_text(attributes, digest, fresh=False):
     stats = attributes.get('stats' if fresh else 'last_analysis_stats', {})
     if not isinstance(stats, dict) or any(type(value) is not int or value < 0 for value in stats.values()):
-        return '⚠️ Invalid analysis statistics. Safety is unknown.'
+        return '⚠️ ទិន្នន័យលទ្ធផលមិនត្រឹមត្រូវ។ មិនអាចបញ្ជាក់សុវត្ថិភាពបានទេ។'
     malicious = stats.get('malicious', 0)
     suspicious = stats.get('suspicious', 0)
     tested = sum(stats.get(k, 0) for k in ('malicious', 'suspicious', 'undetected', 'harmless'))
     skipped = sum(stats.get(k, 0) for k in ('failure', 'timeout', 'confirmed-timeout', 'type-unsupported'))
     if malicious:
-        verdict = '🚨 Engines reported malicious content / រកឃើញការគំរាមកំហែង។ Do not open the file.'
+        verdict = '🚨 កម្មវិធីស្កេនបានរាយការណ៍ថាមានមេរោគ ឬការគំរាមកំហែង។ កុំបើកឯកសារនេះ។'
     elif suspicious:
-        verdict = '⚠️ Engines reported suspicious content / ឯកសារគួរឱ្យសង្ស័យ។'
+        verdict = '⚠️ កម្មវិធីស្កេនបានរាយការណ៍ថាឯកសារនេះគួរឱ្យសង្ស័យ។'
     elif tested == 0:
-        verdict = '⚠️ No usable engine results / មិនមានលទ្ធផលគ្រប់គ្រាន់។ Safety is unknown.'
+        verdict = '⚠️ មិនមានលទ្ធផលគ្រប់គ្រាន់។ មិនអាចបញ្ជាក់សុវត្ថិភាពបានទេ។'
     else:
-        verdict = 'ℹ️ No detections in returned engine results / មិនបានរកឃើញក្នុងរបាយការណ៍នេះ។'
+        verdict = 'ℹ️ មិនបានរកឃើញការគំរាមកំហែងក្នុងលទ្ធផលនេះ។'
     timestamp = attributes.get('date' if fresh else 'last_analysis_date')
     try:
         date = datetime.fromtimestamp(timestamp, timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     except (ValueError, TypeError, OverflowError, OSError):
-        date = 'unknown'
-    coverage = f'Engines with results: {tested}; failed/unsupported/timed out: {skipped}.'
+        date = 'មិនមានព័ត៌មាន'
+    coverage = f'កម្មវិធីស្កេនដែលមានលទ្ធផល៖ {tested}\nបរាជ័យ / មិនគាំទ្រ / លើសពេលកំណត់៖ {skipped}'
     if skipped:
-        coverage += ' Coverage is incomplete.'
-    source = 'Submitted analysis' if fresh else 'Existing report — not a new scan'
-    return (f'{verdict}\n{source}\nMalicious: {malicious} | Suspicious: {suspicious}\n'
-            f'{coverage}\nAnalysis date: {date}\n'
-            'No detections does not guarantee safety. False positives and missed threats are possible.\n'
+        coverage += ' ការពិនិត្យមិនទាន់គ្រប់ជ្រុងជ្រោយទេ។'
+    source = 'លទ្ធផលវិភាគឯកសារដែលអ្នកបានផ្ញើ' if fresh else 'របាយការណ៍ដែលមានស្រាប់ — មិនមែនការស្កេនថ្មីទេ'
+    return (f'{verdict}\n{source}\nរកឃើញការគំរាមកំហែង៖ {malicious} | គួរឱ្យសង្ស័យ៖ {suspicious}\n'
+            f'{coverage}\nកាលបរិច្ឆេទវិភាគ៖ {date}\n'
+            'ការមិនរកឃើញមេរោគ មិនធានាថាឯកសារមានសុវត្ថិភាពទេ។ អាចមានការរកឃើញខុស ឬខកខានការគំរាមកំហែង។\n'
             f'\nSHA-256: {digest}\nhttps://www.virustotal.com/gui/file/{digest}')
 
 
@@ -386,10 +386,10 @@ class Checker:
                     return
                 self.throttle(user)
                 digest = parts[1].lower()
-                self.tg.say(chat, '🔎 Looking up the hash / កំពុងពិនិត្យ hash…')
+                self.tg.say(chat, '🔎 កំពុងស្វែងរករបាយការណ៍តាម hash…')
                 report = self.vt.lookup(digest)
                 self.tg.say(chat, report_text(report.get('attributes', {}), digest) if report else
-                            '⚠️ Hash not found. No scan performed; safety is unknown.')
+                            '⚠️ រកមិនឃើញរបាយការណ៍សម្រាប់ hash នេះទេ។ មិនទាន់បានស្កេន និងមិនអាចបញ្ជាក់សុវត្ថិភាពបានទេ។')
             elif message.get('document'):
                 self.throttle(user)
                 self.handle_document(chat, user, message['document'])
@@ -421,7 +421,7 @@ class Checker:
         file_id = document.get('file_id')
         if not isinstance(file_id, str) or not file_id:
             raise UserError('Telegram file is unavailable.')
-        self.tg.say(chat, '🔎 Checking SHA-256 / កំពុងពិនិត្យ hash…\nOnly the hash is sent to VirusTotal. File contents stay with Telegram/Render unless you approve an upload.')
+        self.tg.say(chat, '🔎 កំពុងពិនិត្យ SHA-256…\nផ្ញើតែ hash ទៅ VirusTotal។ ខ្លឹមសារឯកសាររក្សានៅ Telegram/Render ហើយមិនផ្ញើទៅ VirusTotal ទេ លុះត្រាតែអ្នកយល់ព្រម។')
         with tempfile.TemporaryDirectory(prefix='tgscan-') as directory:
             digest, size = self.tg.download(file_id, Path(directory) / 'sample.bin')
         # The temporary file is already deleted before querying VirusTotal.
@@ -429,7 +429,7 @@ class Checker:
         if report:
             self.tg.say(chat, report_text(report.get('attributes', {}), digest))
         else:
-            self.tg.say(chat, f'⚠️ No existing report / មិនមានរបាយការណ៍។\nNo scan performed; safety is unknown.\nSHA-256: {digest}')
+            self.tg.say(chat, f'⚠️ មិនមានរបាយការណ៍ដែលមានស្រាប់ទេ។\nមិនទាន់បានស្កេន និងមិនអាចបញ្ជាក់សុវត្ថិភាពបានទេ។\nSHA-256: {digest}')
         while len(self.pending) >= 64:
             self.pending.popitem(last=False)
         key = secrets.token_urlsafe(12)
@@ -456,7 +456,7 @@ class Checker:
         elif action == 'upload' and item['stage'] == 'consent':
             # Consume consent before any I/O, so replayed buttons cannot upload twice.
             item['stage'] = 'submitting'
-            self.tg.say(chat, 'Uploading the approved file to VirusTotal / កំពុង Upload…')
+            self.tg.say(chat, 'កំពុងផ្ញើឯកសារដែលអ្នកបានយល់ព្រមទៅ VirusTotal…')
             try:
                 with tempfile.TemporaryDirectory(prefix='tgscan-') as directory:
                     path = Path(directory) / 'sample.bin'
@@ -470,23 +470,23 @@ class Checker:
                 raise
             item['stage'] = 'analysis'
             item['expires'] = time.monotonic() + PENDING_TTL
-            self.tg.say(chat, 'File submitted; local copy deleted. Analysis may take a few minutes. Tap Check result after about 30 seconds. No verdict is available yet.',
+            self.tg.say(chat, 'បានផ្ញើឯកសារទៅ VirusTotal និងលុបច្បាប់ចម្លងនៅ Render រួចហើយ។ ការវិភាគអាចចំណាយពេលប៉ុន្មាននាទី។ ចុច «មើលលទ្ធផល» ក្រោយប្រហែល 30 វិនាទី។ មិនទាន់មានលទ្ធផលសន្និដ្ឋានទេ។',
                         [[{'text': 'Check result / មើលលទ្ធផល', 'callback_data': 'check:' + key}]])
         elif action == 'check' and item['stage'] == 'analysis':
             now = time.monotonic()
             if now - item.get('last_check', -1000) < 30:
-                raise UserError('Please wait 30 seconds before checking this analysis again.')
+                raise UserError('សូមរង់ចាំ 30 វិនាទី មុនពេលពិនិត្យលទ្ធផលនេះម្ដងទៀត។')
             item['last_check'] = now
             result = self.vt.analysis(item['analysis_id'])
             attrs = result.get('attributes', {})
             if attrs.get('status') in ('queued', 'in-progress'):
-                self.tg.say(chat, '⏳ VirusTotal is still analysing. Tap Check result again in 30 seconds.',
-                            [[{'text': 'Check result', 'callback_data': 'check:' + key}]])
+                self.tg.say(chat, '⏳ VirusTotal កំពុងវិភាគនៅឡើយ។ ចុច «មើលលទ្ធផល» ម្ដងទៀតក្រោយ 30 វិនាទី។',
+                            [[{'text': 'មើលលទ្ធផល / Check result', 'callback_data': 'check:' + key}]])
             elif attrs.get('status') == 'completed':
                 self.tg.say(chat, report_text(attrs, item['digest'], fresh=True))
                 del self.pending[key]
             else:
-                raise UserError('Analysis status is unknown. Try the hash later.')
+                raise UserError('មិនអាចបញ្ជាក់ស្ថានភាពវិភាគបានទេ។ សូមពិនិត្យតាម hash ម្ដងទៀតនៅពេលក្រោយ។')
         else:
             raise UserError('This button has already been used. Use Check result or send the file again for a hash lookup.')
 
